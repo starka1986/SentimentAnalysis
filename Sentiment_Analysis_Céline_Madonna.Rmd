@@ -3,6 +3,8 @@ title: "Sentiment_Analysis_DS4"
 author: "Agnes Kollaine Stark"
 date: "5/4/2020"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -26,10 +28,11 @@ library(ggridges)
 library(ggthemes)
 library(kableExtra)
 library(plotly)
+library(topicmodels)
 ```
 
 
-```{r}
+```{r include = FALSE}
 client_id <- 'T7Kc5EZ5k5AdOnxbwIj_jm8TCNZdmepT5ewvpY3jqVQRFhGvb7-xjd0kqvvo5MyB'
 client_secret <- 'hJfLnMAvqNZNZ0qlFG22Akpy5lvtHmKionPdkPTyTcVvyrEYnEMF_jLt6InS3EzgA7p_6QBhegJxxY9sykFx8Q'
 client_access_token <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz0KHZbn_i'
@@ -56,6 +59,9 @@ unnested <- test %>%
 # getting rid of stop words
 celine_df <- unnested %>% 
   anti_join(stop_words)
+
+# writing to .csv to be safe
+write_csv(celine_df, "celine_text.csv")
 ```
 
 For Madonna
@@ -68,15 +74,25 @@ madonna <- genius_album(artist = 'Madonna', album = 'Ray of Light')
 madonna <- madonna %>%
   unnest_tokens(word, lyric)
 
+#At this point I am adding "ba" to the stop words, because I feel that this word - no matter how frequently it is used by Madonna- will shift my analysis.
+
+custom_stop_words <- bind_rows(tibble(word = c("ba"),
+                                      lexicon = c("custom")),
+                               stop_words)
+
 # getting rid of stop words
 madonna_df <- madonna %>% 
-  anti_join(stop_words)
+  anti_join(custom_stop_words)
+
+# writing to .csv to be safe
+write_csv(madonna_df, "madonna_text.csv")
+
 ```
 
 
 Getting the two albums in one dataframe 
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 artist_albums <- tribble(
   ~artist, ~album,
   "Céline Dion", "All the Way... A Decade of Song",
@@ -93,7 +109,11 @@ unnested_df
 
 # removing stop words
 df2 <- unnested_df %>% 
-  anti_join(stop_words)
+  anti_join(custom_stop_words)
+
+# writing to csv in case I lose connection at further steps
+write_csv(df2,"Céline_Madonna_data.csv" )
+View(df2)
 ```
 
 
@@ -105,14 +125,15 @@ Count most common words as a whole
 df3 <- df2 %>%
   count(word, sort = TRUE) 
 df3
+```
 
-# love is by far the most common word, with 117 appearances
+Love is by far the most common word, the second place belongs to "heart" followed by "baby" .
 
-# we can also visualize
-## TODO: color, title, etc.
 
-library(ggplot2)
+We can also visualize these words, to see the weight and the differences better.
+For now we are only looking at words that are present more than 21 times.
 
+```{r}
 df2 %>%
   count(word, sort = TRUE) %>%
   filter( n > 21) %>% 
@@ -121,58 +142,48 @@ df2 %>%
   geom_col() +
   xlab(NULL) +
   coord_flip()
-df2
-
-# not working
-df2 %>%
-  count(word, sort = TRUE) %>%
-  filter( n > 21) %>% 
-  mutate(word = reorder(word, n)) %>%
-  ggplot(aes(x = word,  fill = "artist", y = n)) +
-  geom_col() +
-  xlab(NULL) +
-  coord_flip()
+```
 
 
-library(ggridges)
-library(ggthemes)
-library(kableExtra)
-library(plotly)
+Looking at the individual datasets, shows us Céline Dion uses the word "love" the most often, than Madonna.
 
-# this does not work
+```{r}
+celine_rank<- celine_df %>%
+  count(word, sort = TRUE) 
+celine_rank
+```
 
-df2 %>% ggplot(aes(x = word, y = artist, fill = ..x..)) + 
-  geom_density_ridges_gradient(scale = 0.9) + 
-  scale_fill_gradient(low = "white", high = "maroon3") + 
-  theme_fivethirtyeight() + 
-  theme(panel.background = element_rect(fill = "white")) +
-  theme(plot.background = element_rect(fill = "white")) +
-  xlim(0,1) +
-  theme(legend.position = "none")
+```{r}
+madonna_rank <- madonna_df %>% 
+  count(word, sort = TRUE)
+madonna_rank
+```
 
-# to be tweaked better
+Now let's look at the sentiments that can be found in the two albums.
 
-df2 %>% 
-  count(artist,word, sort = TRUE) %>% 
-  group_by(word)
 
+```{r}
 #let's see what sentiments there are in the nrc lexicon
 
 nrc_sentiments <- get_sentiments("nrc")
 
+# select positive sentiments
 
 nrc_pos <- get_sentiments("nrc") %>% 
   filter(sentiment == "positive")
 
-#nrc_pos
+# join with df by "word"
 
-df3 <- df2 %>% 
+df_pos <- df2 %>% 
   inner_join(nrc_pos) %>% 
   count(word, sort = TRUE)
-df3
+df_pos
+```
 
-# Visualize pos words:
-df3 %>%
+Visualize positive words:
+
+```{r}
+df_pos %>%
   #count(word, sort = TRUE) %>%
   filter( n > 6) %>% 
   mutate(word = reorder(word, n)) %>%
@@ -180,53 +191,60 @@ df3 %>%
   geom_col() +
   xlab(NULL) +
   coord_flip()
-#df3
+```
 
+If we look at the positive words, again we can see that love is the most frequent by far, followed by "baby", "faith" and "sky".
+The list of the three "sky" related words is actually quite interesting, "sky", "sun" and "star" being the 4th-7th most frequent. I would have assumned kiss and feeling to be used more frequently than the above mentioned 3 words.
 
-# visualize this by artist , mapping = artist?
+So whom do these positive words belong to?
+My guess is, that love is mentioned more by Céline Dion ( which we have already seen), and faith, kiss, angel will also be mentioned more by her.
 
+Let's see:
 
-viz2 <- ggplot(key_artist, aes(x=key_name, fill=artist_name, y = n, 
-                               text = paste("Number of Songs: ", n, "<br>",
-                                            "Percent Songs in Key: ", percent, "%")))+
-  geom_bar(position="fill", width=0.5, stat = "identity")+
-  scale_fill_manual(values=c(green, yellow, pink, blue))+
-  labs(x="Key", y="Percent of Songs")+
-  guides(fill=guide_legend(title="Artist"))+
-  theme_minimal()+
-  ggtitle("Musical Key Percentage by Artist")
-
+```{r}
 celine_pos <- df2 %>% 
   filter( artist == "Céline Dion") %>% 
   inner_join(nrc_pos) %>% 
   count(word, sort = TRUE)
 
 celine_pos
+```
 
-# the top 5 pos words for Céline are: love, baby, faith, angel sun
 
+The top 5 pos words for Céline are: love, baby, faith, angel, sky.
+
+```{r}
 madonna_pos <- df2 %>% 
   filter(artist == "Madonna") %>% 
   inner_join(nrc_pos) %>% 
   count(word, sort = TRUE)
 
 madonna_pos
+```
 
-# the top 5 positive words for Madonna are: love, star, swim, kiss, sky
+The top 5 pos words for Madonna are: love ( although much less frequently), star, traveling, sky and swim. Wow! That is rather in the range of activeness.Well Madonna has always been one of those real energetic artists as far as I know.
 
-# Let's see the negative words as well.
 
+Let's see the negative words as well.
+
+```{r}
 nrc_neg <- get_sentiments("nrc") %>% 
   filter(sentiment == "negative")
 
-df4 <- df2 %>% 
+df_neg <- df2 %>% 
   inner_join(nrc_neg) %>% 
   count(word, sort = TRUE)
-#df4
+df_neg
+```
 
-# Top negative sentiment words visualized
+Interesting finding that boy is considered negative.
+It would be understandable had I been using bigram, to see that for example "Oh boy" is something negative.
+But I am unsure why "boy" as a standalone is negative.
 
-df4 %>%
+Top negative sentiment words visualized:
+
+```{r}
+df_neg %>%
   #count(word, sort = TRUE) %>%
   filter( n > 5) %>% 
   mutate(word = reorder(word, n)) %>%
@@ -234,9 +252,34 @@ df4 %>%
   geom_col() +
   xlab(NULL) +
   coord_flip()
-#df4
+```
 
+Let's count the most common positive and negative words using the bing lexicon.
 
+```{r}
+bing_word_counts <- df2 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+bing_word_counts
+```
+
+```{r}
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+```
+
+```{r}
 # Visualizing pos- neg sentiments from the 2 albums using bing lexicon
 
 bing <- get_sentiments("bing")
@@ -246,7 +289,12 @@ counting_words <- df2 %>%
   count(word, sentiment, sort = TRUE)
 
 head(counting_words)
-counting_words %>% 
+```
+
+We can also visualize how negative or positive the most frequently words are in the entire dataset.
+
+```{r}
+bing_word_counts %>% 
   filter(n > 5) %>% 
   mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
   mutate(word = reorder(word, n)) %>% 
@@ -254,8 +302,14 @@ counting_words %>%
   geom_col() +
   coord_flip() +
   labs(y = "Sentiment Score")
+```
 
-# Visualizing individually
+The bing lexicon shows us a quite string shift to the positive part with "love" leading the way, by a large bit.
+The negative sentiment words here are a bit more in line with my "assumptions", such as : "broken", "blame", "cry".
+
+Visualizing individually by artist:
+
+```{r}
 celine_bing <- celine_df %>%
   inner_join(bing) %>%
   count(word, sentiment, sort = TRUE)
@@ -268,7 +322,31 @@ celine_bing %>%
   geom_col() +
   coord_flip() +
   labs(y = "Sentiment Score")
+```
 
+And here is one of the most important points I wanted to make. 
+Céline Dion's songs, by the bing lexicon are much more in the positive range, when filtered to words that are more frequent than 5.
+
+```{r}
+madonna_bing <- madonna_df %>% 
+  inner_join(bing) %>% 
+  count(word, sentiment, sort = TRUE)
+
+madonna_bing %>% 
+  filter(n > 5) %>%
+  mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(word, n, fill = sentiment)) + 
+  geom_col() +
+  coord_flip() +
+  labs(y = "Sentiment Score") +
+  ggtitle("Sentiment for ")
+```
+
+For Madonna, we can see that there are only 4 words that appear more than 5 times, so I will also create a chart with words mentioned more than twice.
+But even this way, we can see that Madonna seems to be a bit less positive than Céline Dion.
+
+```{r}
 madonna_bing <- madonna_df %>% 
   inner_join(bing) %>% 
   count(word, sentiment, sort = TRUE)
@@ -280,72 +358,73 @@ madonna_bing %>%
   ggplot(aes(word, n, fill = sentiment)) + 
   geom_col() +
   coord_flip() +
-  labs(y = "Sentiment Score")
+  labs(y = "Sentiment Score") +
+  ggtitle("Sentiment for Madonna")
+```
 
+If we look at this graph, we can see some shift to the negative side, with only 3 words being positive among the 10 words, that are used more than twice.
+
+Just to have a correct comparison, let's check this for Céline Dion as well.
+
+```{r}
+celine_bing <- celine_df %>% 
+  inner_join(bing) %>% 
+  count(word, sentiment, sort = TRUE)
+
+celine_bing %>% 
+  filter(n > 2) %>%
+  mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(word, n, fill = sentiment)) + 
+  geom_col() +
+  coord_flip() +
+  labs(y = "Sentiment Score") +
+  ggtitle("Sentiment for Céline Dion")
+```
+
+In this case we see 17 words, out of which 11 are positive according to the bing lexicon.
+
+
+Let us create some wordclouds now, to check which are the most commonly used words for these two artists.
+We have looked into this previously, but it can be seen better visually.
+
+```{r include = FALSE}
 # wordcloud
-
 library(wordcloud)
 library(RColorBrewer)
 library(wesanderson)
 wes_palette("GrandBudapest2")
+```
+
+```{r}
+# for Céline Dion
 
 df2 %>%
   filter(artist == "Céline Dion") %>%
   count(word) %>%
   with(wordcloud(word, n, max.words = 20, color = c(wes_palettes$GrandBudapest2[3:1])))
+```
+
+Céline Dion is all about love :) But in general, from a bird's eye view, her words, are really a lot more romantic, emotional and positive.
+
+```{r}
+# for Madonna
 
 df2 %>%
   filter(artist == "Madonna") %>%
   count(word) %>%
-  with(wordcloud(word, n, max.words = 20, color = c(wes_palettes$GrandBudapest1 [3:1])))
+  with(wordcloud(word, n, max.words = 18, color = c(wes_palettes$GrandBudapest1 [3:1])))
+```
+
+As for Madonna? I think it's energy, movement, being active.
+
+I would refrain from stating anything too harshly but Céline Dion seems to be more of a "thinker" whereas Madonna more of a "do-er" type of person. ( at least in these albums )
+
+I will now use the stringr library to produce my tf_idf charts.
+tf-idf helps to define what are the most important words used by the artists.
 
 
-# trump_obama comparison
-
-words <- df2 %>%
-  group_by(artist, word) %>%
-  summarise(contains = 1) %>%
-  ungroup() %>%
-  spread(key = word, value = contains, fill = 0) %>%
-  mutate(word_by_madonna = as.integer(artist == "Madonna")) %>% 
-  select(-artist)
-
-
-words
-
-
-library(glmnet)
-
-fit <- cv.glmnet(
-  x = words %>% select(-word_by_madonna) %>% data.matrix(),
-  y = words$word_by_madonna,
-  family = "binomial"
-)
-
-temp <- coef(fit, s = exp(-3)) %>% as.matrix()
-coefficients <- data.frame(word = row.names(temp), beta = temp[, 1])
-data <- coefficients %>%
-  filter(beta != 0) %>%
-  filter(word != "(Intercept)") %>%
-  arrange(desc(beta)) %>%
-  mutate(i = row_number())
-
-ggplot(data, aes(x = i, y = beta, fill = ifelse(beta > 0, "Madonna", "Céline"))) +
-  geom_bar(stat = "identity", alpha = 0.75) +
-  scale_x_continuous(breaks = data$i, labels = data$word, minor_breaks = NULL) +
-  xlab("") +
-  ylab("Coefficient Estimate") +
-  coord_flip() +
-  scale_fill_manual(
-    guide = guide_legend(title = "Word typically used by:"),
-    values = c("#446093", "#bc3939")
-  ) +
-  theme_bw() +
-  theme(legend.position = "top")
-
-
-# tf_idf
-
+```{r}
 library(stringr)
 
 # create td idf dataframe
@@ -355,6 +434,8 @@ df2_tf_idf <- df2 %>%
   filter(!str_detect(word, "\\d+")) %>%
   bind_tf_idf(word, artist, n) %>%
   arrange(-tf_idf)
+
+# create tf-idf chart
 
 df2_tf_idf %>%    
   arrange(desc(tf_idf)) %>%
@@ -366,19 +447,22 @@ df2_tf_idf %>%
   geom_col(show.legend = FALSE) +
   labs(x = NULL, y = "tf-idf") +
   facet_wrap(~artist, ncol = 2, scales = "free") +
-  coord_flip()
+  coord_flip() +
+  ggtitle("What's important?")
+```
 
-# who is more positive
+Tf-idf will show how important one words is for the tww artists.
+Again we can see that the topics that arise as "important" for Céline Dion are more in the romantic- dreamy field, whereas for Madonna it is much more down to Earth, and less about emotions.
 
+Below I will create a grpah that will explicitly show which artist is more positive by the "nrc" lexicon:
+
+
+```{r}
 sentiment_count <- df2 %>% 
   inner_join(get_sentiments("nrc"), by = "word") %>% 
   count(sentiment, artist) %>% 
   spread(sentiment, n, fill = 0)
 
-#stock_sentiment_count <- stock_tokens %>%
-  #inner_join(get_sentiments("loughran"), by = "word") %>%
-  #count(sentiment, company) %>%
-  #spread(sentiment, n, fill = 0)
 
 sentiment_count %>%
   mutate(score = (positive - negative) / (positive + negative)) %>%
@@ -387,24 +471,58 @@ sentiment_count %>%
   geom_col(show.legend = FALSE) +
   coord_flip() +
   labs(x = "Artist",
-       y = "Positivity score among artists")
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+       y = "Positivity score among artists") +
+  ggtitle("Who is more positive?")
 ```
 
-## Including Plots
+We can see that Céline Dion has a much higher positivity score, than Madonna.
 
-You can also embed plots, for example:
+LDA
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+Let's see what different topics lie within the lines of these songs, using Latent Dirichlet Allocation.
+I will be creating 4 topics, and see what type of words I get in each.
+
+
+```{r}
+topics <- LDA(cast_dtm(data = df2 %>% 
+               count(artist, word) %>% 
+               ungroup(),
+             term = word,
+             document = artist, 
+             value = n),
+    k = 4, control = list(seed = 42)) %>% 
+  tidy(matrix = "beta") %>% 
+  group_by(topic) %>%
+  arrange(desc(beta)) %>% 
+  top_n(12, beta) %>% 
+  ungroup()
+topics %>% 
+  arrange(topic, -beta) %>% 
+  mutate(term = reorder(term, beta)) %>% 
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = 'free') +
+  coord_flip() +
+  ggtitle(" Topic modeling using LDA")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+Materials used:
+
+Tidytext book
+
+https://www.tidytextmining.com/tfidf.html
+
+https://github.com/simranvatsa/tayloR/blob/master/tayloR_final.R
+
+http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
+
+https://github.com/thegrigorian/TextAnalysisWithGutenberg
+
+https://github.com/BenceToth/nlp_songlyrics/blob/master/DS4_final-assignment_Bence-L-Toth_166504.rmd
+
+https://github.com/JosiahParry/genius
+
+
+
+
