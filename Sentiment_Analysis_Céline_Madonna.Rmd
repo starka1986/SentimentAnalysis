@@ -9,7 +9,11 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+My project is going to be a sentiment analysis of Céline Dion's album of 1999 : "All the Way... a Decade of Song" versus Madonna's album of 1998: "Ray of Light".
+
+My hypothesis is that Céline Dion's songs are more positive than Madonna's.
+
+```{r message = FALSE, warning = FALSE}
 library(tidyverse)
 library(geniusr)
 library(dplyr)
@@ -30,54 +34,47 @@ client_id <- 'T7Kc5EZ5k5AdOnxbwIj_jm8TCNZdmepT5ewvpY3jqVQRFhGvb7-xjd0kqvvo5MyB'
 client_secret <- 'hJfLnMAvqNZNZ0qlFG22Akpy5lvtHmKionPdkPTyTcVvyrEYnEMF_jLt6InS3EzgA7p_6QBhegJxxY9sykFx8Q'
 client_access_token <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz0KHZbn_i'
 GENIUS_API_TOKEN <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz0KHZbn_i'
-genius_token()
-# example
-# get_lyrics_search(artist_name = "Kanye West",
-          #        song_title = "Good Morning") %>% 
-  # get lyric bigrams
-  unnest_tokens(bigram, line, token = "ngrams", n = 2) %>%
-  # look for good morning
-  filter(bigram == "good morning") %>% 
-  # count bigram frequency
-  nrow()
-#> [1] 18
 ```
 
-```{r}
+```{r message = FALSE, warning = FALSE}
 # let's try the without API version
-
 install.packages("genius")
 library(genius)
+```
 
-# creating individual datasets for further analysis for both Céline Dion and Madonna
 
+Creating individual datasets for further analysis for both Céline Dion and Madonna
+
+```{r}
+# getting the data
 test <- genius_album(artist = "Céline Dion", album= "All the Way... A Decade of Song")
 
-
+# tokenizing so that each row is one word
 unnested <- test %>%
   unnest_tokens(word, lyric)
 
-
+# getting rid of stop words
 celine_df <- unnested %>% 
   anti_join(stop_words)
-
-celine_df
 ```
 
 For Madonna
 
 ```{r}
+#getting the data
 madonna <- genius_album(artist = 'Madonna', album = 'Ray of Light')
 
+# tokenizing so that each row is one word
 madonna <- madonna %>%
   unnest_tokens(word, lyric)
 
+# getting rid of stop words
 madonna_df <- madonna %>% 
   anti_join(stop_words)
 ```
 
 
-Getting the two albums in one df by default
+Getting the two albums in one dataframe 
 
 ```{r}
 artist_albums <- tribble(
@@ -100,8 +97,11 @@ df2 <- unnested_df %>%
 ```
 
 
+First step of the analysis :
+
 Count most common words as a whole
 
+```{r}
 df3 <- df2 %>%
   count(word, sort = TRUE) 
 df3
