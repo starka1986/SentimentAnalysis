@@ -1,0 +1,410 @@
+---
+title: "Sentiment_Analysis_DS4"
+author: "Agnes Kollaine Stark"
+date: "5/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(geniusr)
+library(dplyr)
+library(tidytext)
+library(wordcloud)
+library(RColorBrewer)
+library(wesanderson)
+library(ggplot2)
+library(ggridges)
+library(ggthemes)
+library(kableExtra)
+library(plotly)
+```
+
+
+```{r}
+client_id <- 'T7Kc5EZ5k5AdOnxbwIj_jm8TCNZdmepT5ewvpY3jqVQRFhGvb7-xjd0kqvvo5MyB'
+client_secret <- 'hJfLnMAvqNZNZ0qlFG22Akpy5lvtHmKionPdkPTyTcVvyrEYnEMF_jLt6InS3EzgA7p_6QBhegJxxY9sykFx8Q'
+client_access_token <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz0KHZbn_i'
+GENIUS_API_TOKEN <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz0KHZbn_i'
+genius_token()
+# example
+# get_lyrics_search(artist_name = "Kanye West",
+          #        song_title = "Good Morning") %>% 
+  # get lyric bigrams
+  unnest_tokens(bigram, line, token = "ngrams", n = 2) %>%
+  # look for good morning
+  filter(bigram == "good morning") %>% 
+  # count bigram frequency
+  nrow()
+#> [1] 18
+```
+
+```{r}
+# let's try the without API version
+
+install.packages("genius")
+library(genius)
+
+# creating individual datasets for further analysis for both Céline Dion and Madonna
+
+test <- genius_album(artist = "Céline Dion", album= "All the Way... A Decade of Song")
+
+
+unnested <- test %>%
+  unnest_tokens(word, lyric)
+
+
+celine_df <- unnested %>% 
+  anti_join(stop_words)
+
+celine_df
+```
+
+For Madonna
+
+```{r}
+madonna <- genius_album(artist = 'Madonna', album = 'Ray of Light')
+
+madonna <- madonna %>%
+  unnest_tokens(word, lyric)
+
+madonna_df <- madonna %>% 
+  anti_join(stop_words)
+```
+
+
+Getting the two albums in one df by default
+
+```{r}
+artist_albums <- tribble(
+  ~artist, ~album,
+  "Céline Dion", "All the Way... A Decade of Song",
+  "Madonna", "Ray of Light"
+)
+
+df <- artist_albums %>%
+  add_genius(artist, album)
+
+# unnesting so that each word is a row
+unnested_df <- df %>%
+  unnest_tokens(word, lyric)
+unnested_df
+
+# removing stop words
+df2 <- unnested_df %>% 
+  anti_join(stop_words)
+```
+
+
+Count most common words as a whole
+
+df3 <- df2 %>%
+  count(word, sort = TRUE) 
+df3
+
+# love is by far the most common word, with 117 appearances
+
+# we can also visualize
+## TODO: color, title, etc.
+
+library(ggplot2)
+
+df2 %>%
+  count(word, sort = TRUE) %>%
+  filter( n > 21) %>% 
+    mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
+df2
+
+# not working
+df2 %>%
+  count(word, sort = TRUE) %>%
+  filter( n > 21) %>% 
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word,  fill = "artist", y = n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
+
+
+library(ggridges)
+library(ggthemes)
+library(kableExtra)
+library(plotly)
+
+# this does not work
+
+df2 %>% ggplot(aes(x = word, y = artist, fill = ..x..)) + 
+  geom_density_ridges_gradient(scale = 0.9) + 
+  scale_fill_gradient(low = "white", high = "maroon3") + 
+  theme_fivethirtyeight() + 
+  theme(panel.background = element_rect(fill = "white")) +
+  theme(plot.background = element_rect(fill = "white")) +
+  xlim(0,1) +
+  theme(legend.position = "none")
+
+# to be tweaked better
+
+df2 %>% 
+  count(artist,word, sort = TRUE) %>% 
+  group_by(word)
+
+#let's see what sentiments there are in the nrc lexicon
+
+nrc_sentiments <- get_sentiments("nrc")
+
+
+nrc_pos <- get_sentiments("nrc") %>% 
+  filter(sentiment == "positive")
+
+#nrc_pos
+
+df3 <- df2 %>% 
+  inner_join(nrc_pos) %>% 
+  count(word, sort = TRUE)
+df3
+
+# Visualize pos words:
+df3 %>%
+  #count(word, sort = TRUE) %>%
+  filter( n > 6) %>% 
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
+#df3
+
+
+# visualize this by artist , mapping = artist?
+
+
+viz2 <- ggplot(key_artist, aes(x=key_name, fill=artist_name, y = n, 
+                               text = paste("Number of Songs: ", n, "<br>",
+                                            "Percent Songs in Key: ", percent, "%")))+
+  geom_bar(position="fill", width=0.5, stat = "identity")+
+  scale_fill_manual(values=c(green, yellow, pink, blue))+
+  labs(x="Key", y="Percent of Songs")+
+  guides(fill=guide_legend(title="Artist"))+
+  theme_minimal()+
+  ggtitle("Musical Key Percentage by Artist")
+
+celine_pos <- df2 %>% 
+  filter( artist == "Céline Dion") %>% 
+  inner_join(nrc_pos) %>% 
+  count(word, sort = TRUE)
+
+celine_pos
+
+# the top 5 pos words for Céline are: love, baby, faith, angel sun
+
+madonna_pos <- df2 %>% 
+  filter(artist == "Madonna") %>% 
+  inner_join(nrc_pos) %>% 
+  count(word, sort = TRUE)
+
+madonna_pos
+
+# the top 5 positive words for Madonna are: love, star, swim, kiss, sky
+
+# Let's see the negative words as well.
+
+nrc_neg <- get_sentiments("nrc") %>% 
+  filter(sentiment == "negative")
+
+df4 <- df2 %>% 
+  inner_join(nrc_neg) %>% 
+  count(word, sort = TRUE)
+#df4
+
+# Top negative sentiment words visualized
+
+df4 %>%
+  #count(word, sort = TRUE) %>%
+  filter( n > 5) %>% 
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
+#df4
+
+
+# Visualizing pos- neg sentiments from the 2 albums using bing lexicon
+
+bing <- get_sentiments("bing")
+
+counting_words <- df2 %>%
+  inner_join(bing) %>%
+  count(word, sentiment, sort = TRUE)
+
+head(counting_words)
+counting_words %>% 
+  filter(n > 5) %>% 
+  mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(word, n, fill = sentiment)) + 
+  geom_col() +
+  coord_flip() +
+  labs(y = "Sentiment Score")
+
+# Visualizing individually
+celine_bing <- celine_df %>%
+  inner_join(bing) %>%
+  count(word, sentiment, sort = TRUE)
+
+celine_bing %>% 
+  filter(n > 5) %>% 
+  mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(word, n, fill = sentiment)) + 
+  geom_col() +
+  coord_flip() +
+  labs(y = "Sentiment Score")
+
+madonna_bing <- madonna_df %>% 
+  inner_join(bing) %>% 
+  count(word, sentiment, sort = TRUE)
+
+madonna_bing %>% 
+  filter(n > 2) %>%
+  mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(word, n, fill = sentiment)) + 
+  geom_col() +
+  coord_flip() +
+  labs(y = "Sentiment Score")
+
+# wordcloud
+
+library(wordcloud)
+library(RColorBrewer)
+library(wesanderson)
+wes_palette("GrandBudapest2")
+
+df2 %>%
+  filter(artist == "Céline Dion") %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 20, color = c(wes_palettes$GrandBudapest2[3:1])))
+
+df2 %>%
+  filter(artist == "Madonna") %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 20, color = c(wes_palettes$GrandBudapest1 [3:1])))
+
+
+# trump_obama comparison
+
+words <- df2 %>%
+  group_by(artist, word) %>%
+  summarise(contains = 1) %>%
+  ungroup() %>%
+  spread(key = word, value = contains, fill = 0) %>%
+  mutate(word_by_madonna = as.integer(artist == "Madonna")) %>% 
+  select(-artist)
+
+
+words
+
+
+library(glmnet)
+
+fit <- cv.glmnet(
+  x = words %>% select(-word_by_madonna) %>% data.matrix(),
+  y = words$word_by_madonna,
+  family = "binomial"
+)
+
+temp <- coef(fit, s = exp(-3)) %>% as.matrix()
+coefficients <- data.frame(word = row.names(temp), beta = temp[, 1])
+data <- coefficients %>%
+  filter(beta != 0) %>%
+  filter(word != "(Intercept)") %>%
+  arrange(desc(beta)) %>%
+  mutate(i = row_number())
+
+ggplot(data, aes(x = i, y = beta, fill = ifelse(beta > 0, "Madonna", "Céline"))) +
+  geom_bar(stat = "identity", alpha = 0.75) +
+  scale_x_continuous(breaks = data$i, labels = data$word, minor_breaks = NULL) +
+  xlab("") +
+  ylab("Coefficient Estimate") +
+  coord_flip() +
+  scale_fill_manual(
+    guide = guide_legend(title = "Word typically used by:"),
+    values = c("#446093", "#bc3939")
+  ) +
+  theme_bw() +
+  theme(legend.position = "top")
+
+
+# tf_idf
+
+library(stringr)
+
+# create td idf dataframe
+
+df2_tf_idf <- df2 %>%
+  count(artist, word) %>%
+  filter(!str_detect(word, "\\d+")) %>%
+  bind_tf_idf(word, artist, n) %>%
+  arrange(-tf_idf)
+
+df2_tf_idf %>%    
+  arrange(desc(tf_idf)) %>%
+  mutate(word = factor(word, levels = rev(unique(word)))) %>% 
+  group_by(artist) %>% 
+  top_n(10) %>% 
+  ungroup %>%
+  ggplot(aes(word, tf_idf, fill = artist)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = NULL, y = "tf-idf") +
+  facet_wrap(~artist, ncol = 2, scales = "free") +
+  coord_flip()
+
+# who is more positive
+
+sentiment_count <- df2 %>% 
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(sentiment, artist) %>% 
+  spread(sentiment, n, fill = 0)
+
+#stock_sentiment_count <- stock_tokens %>%
+  #inner_join(get_sentiments("loughran"), by = "word") %>%
+  #count(sentiment, company) %>%
+  #spread(sentiment, n, fill = 0)
+
+sentiment_count %>%
+  mutate(score = (positive - negative) / (positive + negative)) %>%
+  mutate(artist = reorder(artist, score)) %>%
+  ggplot(aes(artist, score, fill = score > 0)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(x = "Artist",
+       y = "Positivity score among artists")
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
