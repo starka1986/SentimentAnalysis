@@ -41,7 +41,7 @@ GENIUS_API_TOKEN <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz0KH
 
 ```{r message = FALSE, warning = FALSE, include = FALSE}
 # let's try the without API version
-install.packages("genius")
+#install.packages("genius")
 library(genius)
 ```
 
