@@ -15,7 +15,7 @@ My project is going to be a sentiment analysis of Céline Dion's album of 1999 :
 
 My hypothesis is that Céline Dion's songs are more positive than Madonna's.
 
-```{r message = FALSE, warning = FALSE}
+```{r message = FALSE, warning = FALSE, include = FALSE}
 library(tidyverse)
 library(geniusr)
 library(dplyr)
@@ -39,7 +39,7 @@ client_access_token <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz
 GENIUS_API_TOKEN <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz0KHZbn_i'
 ```
 
-```{r message = FALSE, warning = FALSE}
+```{r message = FALSE, warning = FALSE, include = FALSE}
 # let's try the without API version
 install.packages("genius")
 library(genius)
@@ -49,7 +49,7 @@ library(genius)
 
 Creating individual datasets for further analysis for both Céline Dion and Madonna
 
-```{r}
+```{r include = FALSE}
 # getting the data
 test <- genius_album(artist = "Céline Dion", album= "All the Way... A Decade of Song")
 
@@ -67,7 +67,7 @@ write_csv(celine_df, "celine_text.csv")
 
 For Madonna
 
-```{r}
+```{r include = FALSE}
 #getting the data
 madonna <- genius_album(artist = 'Madonna', album = 'Ray of Light')
 
@@ -87,7 +87,6 @@ madonna_df <- madonna %>%
 
 # writing to .csv to be safe
 write_csv(madonna_df, "madonna_text.csv")
-
 ```
 
 
@@ -119,14 +118,14 @@ df2
 ```
 
 ```{r}
+# separate df for Céline D
 celine <- filter(df2,artist == "Céline Dion")
-celine
 ```
 
 ```{r}
+# separate df for Madonna
 madonna <- filter(df2, artist == "Madonna")
 madonna = madonna[-1,]
-madonna
 ```
 
 
@@ -199,8 +198,11 @@ ungroup() %>%
   geom_col(show.legend = FALSE) + 
   facet_wrap(~sentiment,scales="free") + 
   coord_flip() +
-  ggtitle("Sentiments and contributing words")
+  ggtitle("Sentiments and Contributing Words")
 ```
+
+We can see that there is a wide variety of sentiments in the combined dataset of the two albums.
+
 
 What sentiments do we find if we filter to the individual artists?
 
@@ -220,7 +222,6 @@ ungroup() %>%
 ```
 
 
-
 ```{r}
 madonna_sentiments <- madonna %>% 
   inner_join(nrc_sentiments)
@@ -236,8 +237,10 @@ ungroup() %>%
   ggtitle("Sentiments Madonna")
 ```
 
+While these graphs look nice, in our case they are not very handy, I am not able to draw any conclusions from the words used by the artists contributing to the various sentiments.
 
-Let's now focus on positive and negative sentiments only.
+
+So I will now focus on positive and negative sentiments only.
 
 ```{r}
 # select positive sentiments
@@ -308,10 +311,6 @@ df_neg <- df2 %>%
   count(word, sort = TRUE)
 ```
 
-Interesting finding that boy is considered negative.
-It would be understandable had I been using bigram, to see that for example "Oh boy" is something negative.
-But I am unsure why "boy" as a standalone is negative.
-
 Top negative sentiment words visualized:
 
 ```{r}
@@ -325,7 +324,13 @@ df_neg %>%
   coord_flip()
 ```
 
-Let's count the most common positive and negative words using the bing lexicon, and look at their share.
+
+Interesting finding that boy is considered negative.
+It would be understandable had I been using bigram, to see that for example "Oh boy" is something negative.
+But I am unsure why "boy" as a standalone is negative.
+
+
+Let's count the most common positive and negative words using the ***bing*** lexicon, and look at their share.
 
 ```{r}
 bing_word_counts <- df2 %>%
@@ -491,6 +496,24 @@ As for Madonna? I think it's energy, movement, being active.
 
 I would refrain from stating anything too harshly but Céline Dion seems to be more of a "thinker" whereas Madonna more of a "do-er" type of person. ( at least in these albums )
 
+```{r}
+library(reshape2)
+madonna_bing %>% 
+  count(word,sentiment, sort= TRUE) %>% 
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>% 
+  comparison.cloud(colors= c("gray20", "gray80"),
+                   max.words= 120)
+```
+
+```{r}
+celine_bing %>% 
+  count(word,sentiment, sort= TRUE) %>% 
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>% 
+  comparison.cloud(colors= c("gray20", "gray80"),
+                   max.words= 120)
+```
+
+
 **Tf-idf**
 
 I will now use the stringr library to produce my tf_idf charts.
@@ -527,7 +550,7 @@ df2_tf_idf %>%
 Tf-idf will show how important one words is for the tww artists.
 Again we can see that the topics that arise as "important" for Céline Dion are more in the romantic- dreamy field, whereas for Madonna it is much more down to Earth, and less about emotions.
 
-Below I will create a grpah that will explicitly show which artist is more positive by the "nrc" lexicon:
+Below I will create a graph that will explicitly show which artist is more positive by the "nrc" lexicon:
 
 
 ```{r}
@@ -541,7 +564,7 @@ sentiment_count %>%
   mutate(score = (positive - negative) / (positive + negative)) %>%
   mutate(artist = reorder(artist, score)) %>%
   ggplot(aes(artist, score, fill = score > 0)) +
-  geom_col(show.legend = FALSE) +
+  geom_col(show.legend = FALSE, fill = "pink") +
   coord_flip() +
   labs(x = "Artist",
        y = "Positivity score among artists") +
@@ -586,19 +609,17 @@ It is clearly visible that Madonna's words were collected into one of the topics
 
 Materials used:
 
-Tidytext book
+[Tidytext book] (https://www.tidytextmining.com/tfidf.html)
 
-https://www.tidytextmining.com/tfidf.html
+[Taylor Swift song analysis] (https://github.com/simranvatsa/tayloR/blob/master/tayloR_final.R)
 
-https://github.com/simranvatsa/tayloR/blob/master/tayloR_final.R
+[Wordcloud Fundamentals] (http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know)
 
-http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
+[Text Analysis from former student] (https://github.com/thegrigorian/TextAnalysisWithGutenberg)
 
-https://github.com/thegrigorian/TextAnalysisWithGutenberg
+[Song Analysis from former student ] (https://github.com/BenceToth/nlp_songlyrics/blob/master/DS4_final-assignment_Bence-L-Toth_166504.rmd)
 
-https://github.com/BenceToth/nlp_songlyrics/blob/master/DS4_final-assignment_Bence-L-Toth_166504.rmd
-
-https://github.com/JosiahParry/genius
+[Genius package for R] (https://github.com/JosiahParry/genius)
 
 
 
