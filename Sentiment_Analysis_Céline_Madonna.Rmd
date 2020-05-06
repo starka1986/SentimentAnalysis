@@ -48,7 +48,6 @@ set.seed(42)
 
 **Data engineering, exploration**
 
-Creating individual datasets for further analysis for both Céline Dion and Madonna
 
 ```{r include = FALSE}
 # getting the data
@@ -66,7 +65,6 @@ celine_df <- unnested %>%
 write_csv(celine_df, "celine_text.csv")
 ```
 
-For Madonna
 
 ```{r include = FALSE}
 #getting the data
@@ -115,6 +113,11 @@ df2 <- unnested_df %>%
 write_csv(df2,"Céline_Madonna_data.csv" )
 ```
 
+```{r message = FALSE}
+df2 <- read_csv("Céline_Madonna_data.csv")
+```
+
+
 ```{r}
 # separate df for Céline D
 celine <- filter(df2,artist == "Céline Dion")
@@ -137,7 +140,7 @@ df3 <- df2 %>%
 df3
 ```
 
-Love is by far the most common word, the second place belongs to "heart" followed by "baby" .
+!Love is by far the most common word, the second place belongs to "heart" followed by "feel" .
 
 
 We can also visualize these words, to see the weight and the differences better.
@@ -157,7 +160,7 @@ df2 %>%
 
 
 Looking at the individual datasets, shows us Céline Dion uses the word "love" much more often, than Madonna.
-In fact, for Madonna it is not even in top 10 most frequently used words.
+
 
 ```{r}
 celine_rank<- celine %>%
@@ -249,7 +252,8 @@ nrc_pos <- get_sentiments("nrc") %>%
 
 df_pos <- df2 %>% 
   inner_join(nrc_pos) %>% 
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>% 
+  ungroup()
 ```
 
 Visualize positive words:
@@ -265,11 +269,11 @@ df_pos %>%
   coord_flip()
 ```
 
-If we look at the positive words, again we can see that love is the most frequent by far, followed by "baby", "faith" and "sky".
-The list of the three "sky" related words is actually quite interesting, "sky", "sun" and "star" being in the ten most frequent.
+!If we look at the positive words, again we can see that love is the most frequent by far, followed by "baby", "faith" and "sky".
+!The list of the three "sky" related words is actually quite interesting, "sky", "sun" and "star" being in the ten most frequent.
 
 So whom do these positive words belong to?
-My guess is, that love is mentioned more by Céline Dion ( which we have already seen), and faith, kiss, angel will also be mentioned more by her.
+!My guess is, that love is mentioned more by Céline Dion ( which we have already seen), and faith, kiss, angel will also be mentioned more by her.
 
 Let's see:
 
@@ -277,24 +281,26 @@ Let's see:
 celine_pos <- df2 %>% 
   filter( artist == "Céline Dion") %>% 
   inner_join(nrc_pos) %>% 
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>% 
+  ungroup()
 
 celine_pos
 ```
 
 
-The top 5 pos words for Céline are: love, baby, faith, angel, sky.
+!The top 5 pos words for Céline are: love, baby, faith, angel, sky.
 
 ```{r}
 madonna_pos <- df2 %>% 
   filter(artist == "Madonna") %>% 
   inner_join(nrc_pos) %>% 
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>% 
+  ungroup()
 
 madonna_pos
 ```
 
-The top 5 pos words for Madonna are: love ( although much less frequently), star, traveling, sky and swim. Wow! That is rather in the range of activeness.Well Madonna has always been one of those real energetic artists as far as I know.
+The top 5 pos words for Madonna are: love ( although much less frequently), star, traveling, sky... Wow! That is rather in the range of activeness.Well Madonna has always been one of those real energetic artists as far as I know.
 
 
 Let's see the negative words as well.
@@ -305,7 +311,8 @@ nrc_neg <- get_sentiments("nrc") %>%
 
 df_neg <- df2 %>% 
   inner_join(nrc_neg) %>% 
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>% 
+  ungroup()
 ```
 
 Top negative sentiment words visualized:
@@ -362,100 +369,209 @@ counting_words <- df2 %>%
 head(counting_words)
 ```
 
-We can also visualize how negative or positive the most frequently words are in the entire dataset.
+We can also visualize which are the words -that are present 5 or more times - that contribute to the positive and negative sentiments.
 
 ```{r}
 bing_word_counts %>% 
-  filter(n > 5) %>% 
+  filter(n >= 5) %>% 
   mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
-  mutate(word = reorder(word, n)) %>% 
+  mutate(word = reorder(word, n)) %>%
+  #top_n(10) %>% 
   ggplot(aes(word, n, fill = sentiment)) + 
   geom_col() +
   coord_flip() +
   labs(y = "Sentiment Score") +
-  ggtitle("Sentiment of Most Frequent Words")
+  ggtitle("Contribution to Sentiment by Most Freq Words")
 ```
 
-The bing lexicon shows us a quite string shift to the positive part with "love" leading the way, by a large bit.
-The negative sentiment words here are a bit more in line with my "assumptions", such as : "broken", "blame", "cry".
+!The bing lexicon shows us a quite string shift to the positive part with "love" leading the way, by a large bit.
+!The negative sentiment words here are a bit more in line with my "assumptions", such as : "broken", "blame", "cry".
 
 Visualizing individually by artist:
 
 ```{r message = FALSE}
 celine_bing <- celine %>%
   inner_join(bing) %>%
-  count(word, sentiment, sort = TRUE)
+  count(word, sentiment, sort = TRUE) %>% 
+  ungroup()
+
 
 celine_bing %>% 
-  filter(n > 5) %>% 
+  filter(n >= 5) %>% 
   mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
-  mutate(word = reorder(word, n)) %>% 
+  mutate(word = reorder(word, n)) %>%
+  #top_n(5) %>% 
   ggplot(aes(word, n, fill = sentiment)) + 
   geom_col() +
   coord_flip() +
   labs(y = "Sentiment Score") +
-  ggtitle("Sentiment for Céline Dion freq. > 5")
+  ggtitle("Contribution to Sentiment for Céline Dion freq. > 5")
 ```
 
 And here is one of the most important points I wanted to make. 
-Céline Dion's songs, by the bing lexicon are much more in the positive range, when filtered to words that are more frequent than 5.
+Here we can see that the variety of words conttributing to positive sentiments is quite big.
 
 ```{r message = FALSE}
 madonna_bing <- madonna %>% 
   inner_join(bing) %>% 
-  count(word, sentiment, sort = TRUE)
+  count(word, sentiment, sort = TRUE) %>% 
+  ungroup()
 
 madonna_bing %>% 
   filter(n > 5) %>%
   mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
   mutate(word = reorder(word, n)) %>% 
+  #top_n(5) %>% 
   ggplot(aes(word, n, fill = sentiment)) + 
   geom_col() +
   coord_flip() +
   labs(y = "Sentiment Score") +
-  ggtitle("Sentiment for Madonna freq > 5")
+  ggtitle("Contribution to Sentiment for Madonna freq > 5")
 ```
 
-For Madonna, we can see that there are only 4 words that appear more than 5 times, so I will also create a chart with words mentioned more than twice.
-But even this way, we can see that Madonna seems to be a bit less positive than Céline Dion.
+For Madonna, we can see that there are only 3 words that appear more than 5 times that contribute to positive or negative sentiments.It seems that Madonna's words are potentially more neutral, at least those, that are present at least 5 times in her songs.
+
+
+Let's therefore check Madonna's words that are present at least 2 times. 
 
 ```{r}
 madonna_bing <- madonna %>% 
   inner_join(bing) %>% 
-  count(word, sentiment, sort = TRUE)
+  count(word, sentiment, sort = TRUE) %>% 
+  ungroup()
 
 madonna_bing %>% 
-  filter(n > 2) %>%
+  filter(n >= 2) %>%
   mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
   mutate(word = reorder(word, n)) %>% 
   ggplot(aes(word, n, fill = sentiment)) + 
   geom_col() +
   coord_flip() +
   labs(y = "Sentiment Score") +
-  ggtitle("Sentiment for Madonna freq. > 2")
+  ggtitle("Contribution to Sentiment for Madonna freq. > 2")
 ```
 
-If we look at this graph, we can see some shift to the negative side, with only 3 words being positive among the 10 words, that are used more than twice.
+If we look at this graph, we can see some shift to the negative side, more words are contributing to negative sentiments, than to positive.
 
 Just to have a correct comparison, let's check this for Céline Dion as well.
 
 ```{r message = FALSE}
 celine_bing <- celine %>% 
   inner_join(bing) %>% 
-  count(word, sentiment, sort = TRUE)
+  count(word, sentiment, sort = TRUE) %>% 
+  ungroup()
 
 celine_bing %>% 
-  filter(n > 2) %>%
+  filter(n >= 2) %>%
   mutate(n = ifelse(sentiment == "negative", -n , n)) %>% 
   mutate(word = reorder(word, n)) %>% 
   ggplot(aes(word, n, fill = sentiment)) + 
   geom_col() +
   coord_flip() +
   labs(y = "Sentiment Score") +
-  ggtitle("Sentiment for Céline D freq. > 2")
+  ggtitle("Contribution to Sentiment for Céline D freq. > 2")
 ```
 
-In this case we see 17 words, out of which 11 are positive according to the bing lexicon.
+In this case we see that there are more words of at least 2 mentions, and the shift is clearly to the positive sentiment words.
+
+
+Try Silge again
+```{r message = FALSE}
+bing_word_counts2 <- df2 %>%
+  inner_join(get_sentiments("bing"))
+#  count(word, sentiment, sort = TRUE) %>%
+# ungroup()
+
+bing_word_counts2
+```
+
+
+```{r}
+bing_word_counts2 %>%
+  count(sentiment, word) %>%
+  ungroup() %>%
+  filter(n >= 5) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(term = reorder(word, n)) %>%
+  ggplot(aes(term, n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  ylab("Contribution to sentiment") +
+  coord_flip()
+```
+
+For Céline Dion:
+
+```{r message = FALSE}
+bing_celine <- celine %>%
+  inner_join(get_sentiments("bing"))
+#  count(word, sentiment, sort = TRUE) %>%
+# ungroup()
+
+bing_celine
+```
+
+
+```{r}
+bing_celine %>%
+  count(sentiment, word) %>%
+  ungroup() %>%
+  filter(n >= 5) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(term = reorder(word, n)) %>%
+  ggplot(aes(term, n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  ylab("Contribution to sentiment") +
+  coord_flip()
+```
+
+
+```{r message = FALSE}
+bing_madonna <- madonna %>%
+  inner_join(get_sentiments("bing"))
+#  count(word, sentiment, sort = TRUE) %>%
+# ungroup()
+
+bing_madonna
+```
+
+```{r}
+bing_madonna %>%
+  count(sentiment, word) %>%
+  ungroup() %>%
+  filter(n >= 5) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(term = reorder(word, n)) %>%
+  ggplot(aes(term, n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  ylab("Contribution to sentiment") +
+  coord_flip()
+```
+
+```{r}
+bing_madonna %>%
+  count(sentiment, word) %>%
+  ungroup() %>%
+  filter(n >=2 ) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(term = reorder(word, n)) %>%
+  ggplot(aes(term, n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  ylab("Contribution to sentiment") +
+  coord_flip()
+```
+
+```{r}
+bing_celine %>%
+  count(sentiment, word) %>%
+    ungroup() %>%
+  filter(n >=2 ) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(term = reorder(word, n)) %>%
+  ggplot(aes(term, n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  ylab("Contribution to sentiment") +
+  coord_flip()
+```
 
 **Wordclouds**
 
