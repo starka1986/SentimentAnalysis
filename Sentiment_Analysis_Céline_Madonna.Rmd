@@ -1,5 +1,5 @@
 ---
-title: "Sentiment_Analysis_DS4"
+title: "DS4_Sentiment_Analysis_Céline_Dion_vs_Madonna"
 author: "Agnes Kollaine Stark"
 date: "5/4/2020"
 output: html_document
@@ -32,13 +32,6 @@ library(topicmodels)
 ```
 
 
-```{r include = FALSE}
-client_id <- 'T7Kc5EZ5k5AdOnxbwIj_jm8TCNZdmepT5ewvpY3jqVQRFhGvb7-xjd0kqvvo5MyB'
-client_secret <- 'hJfLnMAvqNZNZ0qlFG22Akpy5lvtHmKionPdkPTyTcVvyrEYnEMF_jLt6InS3EzgA7p_6QBhegJxxY9sykFx8Q'
-client_access_token <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz0KHZbn_i'
-GENIUS_API_TOKEN <- 'KyIEPZ3RyqZEJq0RCnncWX8IOk5uDlD1B-Z8S8TWxHPt_Owm_P4YNHwz0KHZbn_i'
-```
-
 ```{r message = FALSE, warning = FALSE, include = FALSE}
 # let's try the without API version
 #install.packages("genius")
@@ -48,8 +41,14 @@ set.seed(42)
 
 **Data engineering, exploration**
 
+```{r eval = FALSE}
+client_id <- 'Your_ID_here'
+client_secret <- 'Your_Password_here'
+client_access_token <- 'Your_token_here'
+GENIUS_API_TOKEN <- 'Your_token_here'
+```
 
-```{r include = FALSE}
+```{r eval = FALSE, echo = FALSE}
 # getting the data
 test <- genius_album(artist = "Céline Dion", album= "All the Way... A Decade of Song")
 
@@ -66,7 +65,7 @@ write_csv(celine_df, "celine_text.csv")
 ```
 
 
-```{r include = FALSE}
+```{r eval = FALSE, echo = FALSE}
 #getting the data
 madonna <- genius_album(artist = 'Madonna', album = 'Ray of Light')
 
@@ -91,7 +90,7 @@ write_csv(madonna_df, "madonna_text.csv")
 
 Getting the two albums in one dataframe 
 
-```{r message = FALSE, warning = FALSE}
+```{r eval = FALSE}
 artist_albums <- tribble(
   ~artist, ~album,
   "Céline Dion", "All the Way... A Decade of Song",
@@ -140,7 +139,7 @@ df3 <- df2 %>%
 df3
 ```
 
-!Love is by far the most common word, the second place belongs to "heart" followed by "feel" .
+Love is by far the most common word, the second place belongs to "heart" followed by "baby" .
 
 
 We can also visualize these words, to see the weight and the differences better.
@@ -189,7 +188,7 @@ df_sentiments <- df2 %>%
   #count(word, sort = TRUE)
 ```
 
-```{r}
+```{r message = FALSE}
 df_sentiments %>% 
   count(word,sentiment,sort=TRUE) %>%
 group_by(sentiment)%>%top_n(n=5) %>% 
@@ -270,10 +269,10 @@ df_pos %>%
 ```
 
 !If we look at the positive words, again we can see that love is the most frequent by far, followed by "baby", "faith" and "sky".
-!The list of the three "sky" related words is actually quite interesting, "sky", "sun" and "star" being in the ten most frequent.
+The list of the three "sky" related words is actually quite interesting, "sky", "sun" and "star" being in the ten most frequent.
 
 So whom do these positive words belong to?
-!My guess is, that love is mentioned more by Céline Dion ( which we have already seen), and faith, kiss, angel will also be mentioned more by her.
+My guess is, that love is mentioned more by Céline Dion ( which we have already seen), and faith, angel will also be mentioned more by her.
 
 Let's see:
 
@@ -288,7 +287,7 @@ celine_pos
 ```
 
 
-!The top 5 pos words for Céline are: love, baby, faith, angel, sky.
+The top 5 pos words for Céline are: love, baby, faith, angel, sun.
 
 ```{r}
 madonna_pos <- df2 %>% 
@@ -358,16 +357,8 @@ bing_word_counts %>%
   ggtitle("Top 10 Neg. & Pos. Sentiment Words")
 ```
 
-```{r}
-#remove this?
-bing <- get_sentiments("bing")
+The only finding we have here is that the word "love" because of its high frequency contributes a fair bit to the positive sentiment words.
 
-counting_words <- df2 %>%
-  inner_join(bing) %>%
-  count(word, sentiment, sort = TRUE)
-
-head(counting_words)
-```
 
 We can also visualize which are the words -that are present 5 or more times - that contribute to the positive and negative sentiments.
 
@@ -384,12 +375,14 @@ bing_word_counts %>%
   ggtitle("Contribution to Sentiment by Most Freq Words")
 ```
 
-!The bing lexicon shows us a quite string shift to the positive part with "love" leading the way, by a large bit.
-!The negative sentiment words here are a bit more in line with my "assumptions", such as : "broken", "blame", "cry".
+The bing lexicon shows us a quite string shift to the positive part with "love" leading the way, by a large bit.
+The negative sentiment words here are a bit more in line with my "assumptions", such as : "broken", "blame", "cry", boy is not listed here.
 
 Visualizing individually by artist:
 
 ```{r message = FALSE}
+bing <- get_sentiments("bing")
+
 celine_bing <- celine %>%
   inner_join(bing) %>%
   count(word, sentiment, sort = TRUE) %>% 
@@ -409,7 +402,7 @@ celine_bing %>%
 ```
 
 And here is one of the most important points I wanted to make. 
-Here we can see that the variety of words conttributing to positive sentiments is quite big.
+Here we can see that the variety of words conttributing to positive sentiments is quite big, or at least there are definitely more words contributing to positive sentiment, than negative for Céline Dion.
 
 ```{r message = FALSE}
 madonna_bing <- madonna %>% 
@@ -429,7 +422,7 @@ madonna_bing %>%
   ggtitle("Contribution to Sentiment for Madonna freq > 5")
 ```
 
-For Madonna, we can see that there are only 3 words that appear more than 5 times that contribute to positive or negative sentiments.It seems that Madonna's words are potentially more neutral, at least those, that are present at least 5 times in her songs.
+For Madonna, we can see that there are only few words that appear more than 5 times that contribute to positive or negative sentiments.It seems that Madonna's words are potentially more neutral, at least those, that are present at least 5 times in her songs.
 
 
 Let's therefore check Madonna's words that are present at least 2 times. 
@@ -495,6 +488,7 @@ sentiment_count %>%
   ggtitle("Who is more positive?")
 ```
 
+Here we can clearly see that Céline Dion's positivity score is much higher.
 
 
 **Wordclouds**
@@ -519,7 +513,7 @@ df2 %>%
   with(wordcloud(word, n, max.words = 20, color = c(wes_palettes$GrandBudapest2[3:1])))
 ```
 
-Céline Dion is all about love :) But in general, from a bird's eye view, her words, are really a lot more emotional and positive.
+Céline Dion is all about love :) But in general, from a bird's eye view her words, are really a lot more emotional and positive.
 
 ```{r warning = FALSE}
 # for Madonna
@@ -536,8 +530,10 @@ I would refrain from stating anything too harshly but Céline Dion seems to be m
 
 Using comparison cloud we can visualize the positive and negative words for both artists.
 
+For Céline Dion
 
 ```{r warning = FALSE, message = FALSE}
+library(reshape2)
 celine_bing %>% 
   count(word,sentiment, sort= TRUE) %>% 
   acast(word ~ sentiment, value.var = "n", fill = 0) %>% 
@@ -545,9 +541,9 @@ celine_bing %>%
                    max.words= 120)
 ```
 
+For Madonna
 
 ```{r warning = FALSE, messaeg = FALSE}
-library(reshape2)
 madonna_bing %>% 
   count(word,sentiment, sort= TRUE) %>% 
   acast(word ~ sentiment, value.var = "n", fill = 0) %>% 
@@ -556,6 +552,7 @@ madonna_bing %>%
 ```
 
 It is of no surprise that Céline Dion has more positive sentiment words listed, than Madonna.
+Madonna's comparison cloud is "darker".
 
 
 
@@ -592,11 +589,9 @@ df2_tf_idf %>%
   ggtitle("What's important?")
 ```
 
-Tf-idf will show how important one words is for the tww artists.
+Tf-idf will show how important one words is for the artists.
 Again we can see that the topics that arise as "important" for Céline Dion are more in the romantic- dreamy field, whereas for Madonna it is much more down to Earth, and less about emotions.
 
-
-We can see that Céline Dion has a much higher positivity score, than Madonna.
 
 **LDA- Topic Modelling**
 
@@ -632,24 +627,25 @@ It is clearly visible that Madonna's words were collected into one of the topics
 
 **Conclusion**
 
-My hypothesis, that Céline Dion's song are more positive than Madonna's seem to be proved right.This is on eof the rare cases when the hypothesis cannot be rejected.
+My hypothesis, that Céline Dion's song are more positive than Madonna's seem to be proved right.This is one of the rare cases when the hypothesis cannot be rejected.
 
 I first looked at the overall frequency of the words available in the two albums.
 Since the word "love" is one of the most positive words, I first checked which artist uses it more.
 The word love was used by Céline Dion much more frequently than by Madonna. 
 
 Then I looked at the sentiments present in the dataset, also for the individual artists. 
-I also checked which were the most common positive and negative sentiment words, as well as which words contributed most to the various sentiments ( positive or negative)
+I also checked which were the most common positive and negative sentiment words, as well as which words contributed most to the various sentiments ( positive or negative).
 It seemed that Madonna had more words that were contributing to negative sentiments, than Céline Dion.
 
-I used the nrc lexicon to check and visualize who is more positive overall. the answer was clear: Céline Dion.
+I used the nrc lexicon to check and visualize who is more positive overall. The answer was clear: Céline Dion.
 
-I also looked at wordclouds to get an overall picture of what words seem most important for the two artists.
+I also looked at wordclouds to get an overall picture of what words were used most frequenty by the two artists.
 Comparison cloud helped to visualize the weight of positive and negative words, in the wordcloud.
 
 Using the tf-idf method I was able to identify what words seem to be the most important for the two artists.
 I was able to derive that for Céline Dion most words defined by the tf-idf method were about emotions, whereas for Madonna they were more down to Earth and active.
 
+To check on my previous findings, I used LDA Topic Modelling to see what the LDA is going to find. I purposely indicated 2 categories, and checked how it divides the words.The pattern that we have seen previously was also visible here, one category was much more active, while the other much more emotional.
 
 
 Materials used:
