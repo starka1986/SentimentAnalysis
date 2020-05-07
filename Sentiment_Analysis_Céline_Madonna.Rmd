@@ -474,108 +474,32 @@ celine_bing %>%
 
 In this case we see that there are more words of at least 2 mentions, and the shift is clearly to the positive sentiment words.
 
-
-Try Silge again
-```{r message = FALSE}
-bing_word_counts2 <- df2 %>%
-  inner_join(get_sentiments("bing"))
-#  count(word, sentiment, sort = TRUE) %>%
-# ungroup()
-
-bing_word_counts2
-```
+Below I will create a graph that will explicitly show which artist is more positive by the "nrc" lexicon:
 
 
 ```{r}
-bing_word_counts2 %>%
-  count(sentiment, word) %>%
-  ungroup() %>%
-  filter(n >= 5) %>%
-  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
-  mutate(term = reorder(word, n)) %>%
-  ggplot(aes(term, n, fill = sentiment)) +
-  geom_bar(stat = "identity") +
-  ylab("Contribution to sentiment") +
-  coord_flip()
-```
+sentiment_count <- df2 %>% 
+  inner_join(get_sentiments("nrc"), by = "word") %>% 
+  count(sentiment, artist) %>% 
+  spread(sentiment, n, fill = 0)
 
-For Céline Dion:
 
-```{r message = FALSE}
-bing_celine <- celine %>%
-  inner_join(get_sentiments("bing"))
-#  count(word, sentiment, sort = TRUE) %>%
-# ungroup()
-
-bing_celine
+sentiment_count %>%
+  mutate(score = (positive - negative) / (positive + negative)) %>%
+  mutate(artist = reorder(artist, score)) %>%
+  ggplot(aes(artist, score, fill = score > 0)) +
+  geom_col(show.legend = FALSE, fill = "pink") +
+  coord_flip() +
+  labs(x = "Artist",
+       y = "Positivity score among artists") +
+  ggtitle("Who is more positive?")
 ```
 
 
-```{r}
-bing_celine %>%
-  count(sentiment, word) %>%
-  ungroup() %>%
-  filter(n >= 5) %>%
-  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
-  mutate(term = reorder(word, n)) %>%
-  ggplot(aes(term, n, fill = sentiment)) +
-  geom_bar(stat = "identity") +
-  ylab("Contribution to sentiment") +
-  coord_flip()
-```
-
-
-```{r message = FALSE}
-bing_madonna <- madonna %>%
-  inner_join(get_sentiments("bing"))
-#  count(word, sentiment, sort = TRUE) %>%
-# ungroup()
-
-bing_madonna
-```
-
-```{r}
-bing_madonna %>%
-  count(sentiment, word) %>%
-  ungroup() %>%
-  filter(n >= 5) %>%
-  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
-  mutate(term = reorder(word, n)) %>%
-  ggplot(aes(term, n, fill = sentiment)) +
-  geom_bar(stat = "identity") +
-  ylab("Contribution to sentiment") +
-  coord_flip()
-```
-
-```{r}
-bing_madonna %>%
-  count(sentiment, word) %>%
-  ungroup() %>%
-  filter(n >=2 ) %>%
-  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
-  mutate(term = reorder(word, n)) %>%
-  ggplot(aes(term, n, fill = sentiment)) +
-  geom_bar(stat = "identity") +
-  ylab("Contribution to sentiment") +
-  coord_flip()
-```
-
-```{r}
-bing_celine %>%
-  count(sentiment, word) %>%
-    ungroup() %>%
-  filter(n >=2 ) %>%
-  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
-  mutate(term = reorder(word, n)) %>%
-  ggplot(aes(term, n, fill = sentiment)) +
-  geom_bar(stat = "identity") +
-  ylab("Contribution to sentiment") +
-  coord_flip()
-```
 
 **Wordclouds**
 
-Let us create some wordclouds now, to check which are the most commonly used words for these two artists.
+Let's create some wordclouds now, to check which are the most commonly used words for these two artists.
 We have looked into this previously, but it can be seen better visually.
 
 ```{r include = FALSE}
@@ -610,6 +534,18 @@ As for Madonna? I think it's energy, movement, being active.
 
 I would refrain from stating anything too harshly but Céline Dion seems to be more of a "thinker" whereas Madonna more of a "do-er" type of person. ( at least in these albums )
 
+Using comparison cloud we can visualize the positive and negative words for both artists.
+
+
+```{r warning = FALSE, message = FALSE}
+celine_bing %>% 
+  count(word,sentiment, sort= TRUE) %>% 
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>% 
+  comparison.cloud(colors= c("gray20", "gray80"),
+                   max.words= 120)
+```
+
+
 ```{r warning = FALSE, messaeg = FALSE}
 library(reshape2)
 madonna_bing %>% 
@@ -619,13 +555,8 @@ madonna_bing %>%
                    max.words= 120)
 ```
 
-```{r warning = FALSE, message = FALSE}
-celine_bing %>% 
-  count(word,sentiment, sort= TRUE) %>% 
-  acast(word ~ sentiment, value.var = "n", fill = 0) %>% 
-  comparison.cloud(colors= c("gray20", "gray80"),
-                   max.words= 120)
-```
+It is of no surprise that Céline Dion has more positive sentiment words listed, than Madonna.
+
 
 
 **Tf-idf**
@@ -664,26 +595,6 @@ df2_tf_idf %>%
 Tf-idf will show how important one words is for the tww artists.
 Again we can see that the topics that arise as "important" for Céline Dion are more in the romantic- dreamy field, whereas for Madonna it is much more down to Earth, and less about emotions.
 
-Below I will create a graph that will explicitly show which artist is more positive by the "nrc" lexicon:
-
-
-```{r}
-sentiment_count <- df2 %>% 
-  inner_join(get_sentiments("nrc"), by = "word") %>% 
-  count(sentiment, artist) %>% 
-  spread(sentiment, n, fill = 0)
-
-
-sentiment_count %>%
-  mutate(score = (positive - negative) / (positive + negative)) %>%
-  mutate(artist = reorder(artist, score)) %>%
-  ggplot(aes(artist, score, fill = score > 0)) +
-  geom_col(show.legend = FALSE, fill = "pink") +
-  coord_flip() +
-  labs(x = "Artist",
-       y = "Positivity score among artists") +
-  ggtitle("Who is more positive?")
-```
 
 We can see that Céline Dion has a much higher positivity score, than Madonna.
 
@@ -720,6 +631,26 @@ Using topic modelling, we are able to make the distinction between Madonna's and
 It is clearly visible that Madonna's words were collected into one of the topics, a topic that to me seems much more down to Earth, versus Céline Dion's collection of words which are much more about feelings, than activity.
 
 **Conclusion**
+
+My hypothesis, that Céline Dion's song are more positive than Madonna's seem to be proved right.This is on eof the rare cases when the hypothesis cannot be rejected.
+
+I first looked at the overall frequency of the words available in the two albums.
+Since the word "love" is one of the most positive words, I first checked which artist uses it more.
+The word love was used by Céline Dion much more frequently than by Madonna. 
+
+Then I looked at the sentiments present in the dataset, also for the individual artists. 
+I also checked which were the most common positive and negative sentiment words, as well as which words contributed most to the various sentiments ( positive or negative)
+It seemed that Madonna had more words that were contributing to negative sentiments, than Céline Dion.
+
+I used the nrc lexicon to check and visualize who is more positive overall. the answer was clear: Céline Dion.
+
+I also looked at wordclouds to get an overall picture of what words seem most important for the two artists.
+Comparison cloud helped to visualize the weight of positive and negative words, in the wordcloud.
+
+Using the tf-idf method I was able to identify what words seem to be the most important for the two artists.
+I was able to derive that for Céline Dion most words defined by the tf-idf method were about emotions, whereas for Madonna they were more down to Earth and active.
+
+
 
 Materials used:
 
